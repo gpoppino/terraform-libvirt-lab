@@ -99,7 +99,7 @@ data "libvirt_network_dns_host_template" "hosts" {
 
 resource "libvirt_network" "network" {
   name = "${var.instance_name}-${terraform.workspace}-network"
-  mode = "route"
+  mode = var.network_mode
   domain = var.domain
   dhcp {  enabled = true }
   addresses = [ var.network_address ]

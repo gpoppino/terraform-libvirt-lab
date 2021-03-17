@@ -51,3 +51,8 @@ variable network_address {
 variable domain {
   type = string
 }
+
+variable network_mode {
+  type = string
+  default = "route"
+}
