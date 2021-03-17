@@ -22,7 +22,7 @@ variable libvirt_network_name {
 }
 
 variable instance_memory {
-  default = "512"
+  default = "2048"
 }
 
 variable instance_vcpu {
@@ -44,16 +44,10 @@ variable number_of_instances {
   default = 1
 }
 
-variable dhcp {
-  type = bool
-  default = true
-}
-
 variable network_address {
   type = string
 }
 
-variable nameservers {
-  type = list
-  default = [ "1.1.1.1", "1.0.0.1" ]
+variable domain {
+  type = string
 }

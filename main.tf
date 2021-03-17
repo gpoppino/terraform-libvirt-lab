@@ -12,17 +12,12 @@ provider "libvirt" {
     uri = var.libvirt_uri
 }
 
-locals {
-  nameservers = jsonencode(concat([cidrhost(var.network_address, 1)], var.nameservers))
-}
-
 data "template_file" "user_data" {
   count = var.number_of_instances
   template = file("${path.module}/templates/cloud_init.cfg")
   vars = {
     ssh_public_key = file(var.ssh_public_key)
     hostname = "${var.instance_name}-${terraform.workspace}-${count.index}"
-    libvirt_nameserver = cidrhost(var.network_address, 1)
   }
 }
 
@@ -30,11 +25,9 @@ data "template_file" "network_config" {
   count = var.number_of_instances
   template = file("${path.module}/templates/network_config.cfg")
   vars = {
-    dhcp = var.dhcp
     ip_address = cidrhost(var.network_address, count.index + 2)
     netmask = cidrnetmask(var.network_address)
     gateway = cidrhost(var.network_address, 1)
-    nameservers = local.nameservers
   }
 }
 
@@ -69,6 +62,7 @@ resource "libvirt_domain" "instance_domain" {
 
   network_interface {
     network_id = libvirt_network.network.id
+    wait_for_lease = true
   }
 
   # IMPORTANT: this is a known bug on cloud images, since they expect a console
@@ -100,27 +94,19 @@ resource "libvirt_domain" "instance_domain" {
 data "libvirt_network_dns_host_template" "hosts" {
   count    = var.number_of_instances
   hostname = data.template_file.user_data[count.index].vars.hostname
-  ip       = cidrhost(var.network_address, count.index + 2)
+  ip = ""
 }
 
 resource "libvirt_network" "network" {
   name = "${var.instance_name}-${terraform.workspace}-network"
-  mode = "nat"
-  domain = "local"
-  dhcp {  enabled = false }
+  mode = "route"
+  domain = var.domain
+  dhcp {  enabled = true }
   addresses = [ var.network_address ]
   autostart = true
   dns {
     enabled = true
     local_only = true
-
-    dynamic "hosts" {
-      for_each = data.libvirt_network_dns_host_template.hosts.*.rendered
-      content {
-        hostname = hosts.value["hostname"]
-        ip = hosts.value["ip"]
-      }
-    }
   }
 }
 
@@ -133,6 +119,9 @@ output "network_id" {
 }
 
 output "hosts" {
-  #value = libvirt_domain.instance_domain.*.network_interface.0.addresses
   value = data.libvirt_network_dns_host_template.hosts.*.rendered
+}
+
+output "ipv4" {
+  value = libvirt_domain.instance_domain.*.network_interface.0.addresses
 }
