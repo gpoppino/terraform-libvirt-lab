@@ -91,9 +91,9 @@ resource "libvirt_domain" "instance_domain" {
 }
 
 data "libvirt_network_dns_host_template" "hosts" {
-  count    = var.number_of_instances
+  count = var.number_of_instances
   hostname = data.template_file.user_data[count.index].vars.hostname
-  ip = ""
+  ip = libvirt_domain.instance_domain[count.index].network_interface.0.addresses[0]
 }
 
 resource "libvirt_network" "network" {
@@ -105,7 +105,7 @@ resource "libvirt_network" "network" {
   autostart = true
   dns {
     enabled = true
-    local_only = true
+    local_only = false
   }
 }
 
